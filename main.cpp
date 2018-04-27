@@ -15,6 +15,12 @@ volatile int cont_thread = 0;
 volatile int requisicao = 0;
 volatile int resposta = 0;
 
+
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+
+
 // função de somatorio
 int somatorio(int n){
     // (n * (n+1))/2
@@ -24,6 +30,27 @@ int somatorio(int n){
 
     return soma;
 }
+
+// linha de execução do servidor
+void servidor(int id){
+    while(true){
+        if(flag){
+            resposta = somatorio(requisicao);
+            cont_thread++;
+            flag = false;
+        }
+
+        // condição de parada do servidor
+        if(cont_thread == NUM_THREADS)
+            break;
+    }
+}
+
+
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+
 
 // linha de execução da thread cliente
 void cliente(int id){
@@ -57,20 +84,22 @@ void cliente(int id){
     cond_var.notify_all();
 }
 
-// linha de execução do servidor
-void servidor(int id){
-    while(true){
-        if(flag){
-            resposta = somatorio(requisicao);
-            cont_thread++;
-            flag = false;
-        }
 
-        // condição de parada do servidor
-        if(cont_thread == NUM_THREADS)
-            break;
-    }
-}
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+
+// escalonadores
+void first_come_first_served();
+
+void shortest_job_first();
+
+void round_robin(int quantum);
+
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+
 
 int main(){
     // criação da thread servidor
