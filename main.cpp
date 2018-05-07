@@ -15,6 +15,9 @@ volatile int cont_thread = 0;
 volatile int requisicao = 0;
 volatile int resposta = 0;
 
+// controle de tempo
+volatile clock_t tempo_inicial_escalonador;
+
 
 // ---------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------
@@ -54,6 +57,11 @@ void servidor(int id){
 
 // linha de execução da thread cliente
 void cliente(int id){
+    // controles do tempo
+    clock_t inicio, fim;
+    double duracao, espera;
+    inicio = clock();
+
     // trava a si mesma, esperando a vez
     unique_lock<mutex> trava(mtx);
     // thread fica esperando ser a sua vez
@@ -78,7 +86,16 @@ void cliente(int id){
     while(flag);
 
     // cliente recebe a resposta e imprime o valor
-    cout << "Valor respondido: " << resposta << endl << endl;
+    cout << "Valor respondido: " << resposta << endl;
+
+    // controle do tempo
+    fim = clock();
+    duracao = 1000 * (double) (fim - inicio) / (double) (CLOCKS_PER_SEC);
+    espera = 1000 * (double) (fim - tempo_inicial_escalonador) / (double) (CLOCKS_PER_SEC);
+
+    // imprime o tempo de resposta / espera
+    printf("Tempo de resposta: %.2fms\n", duracao);
+    printf("Tempo de espera: %.2fms\n\n", espera);
 
     // thread passa a vez
     cond_var.notify_all();
@@ -90,11 +107,32 @@ void cliente(int id){
 // ---------------------------------------------------------------------------------------
 
 // escalonadores
-void first_come_first_served();
+void first_come_first_served(thread threads[]){
+    // variaveis de controle de tempo
+    clock_t fim;
+    double duracao, vazao;
 
-void shortest_job_first();
+    for(int i = 0; i < NUM_THREADS; i++)
+        threads[i].join();
 
-void round_robin(int quantum);
+    // controle do tempo
+    fim = clock();
+    duracao = 1000 * (double) (fim - tempo_inicial_escalonador) / (double) (CLOCKS_PER_SEC);
+    vazao = NUM_THREADS / duracao;
+    printf("Vazão: %.2f threads/ms\n", vazao);
+}
+
+void shortest_job_first(thread threads[]){
+    // execução aqui();
+}
+
+void shortest_remaining_job_first(thread threads[], int quantum){
+    // execução aqui();
+}
+
+void round_robin(thread threads[], int quantum){
+    // execução aqui();
+}
 
 // ---------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------
@@ -104,13 +142,14 @@ void round_robin(int quantum);
 int main(){
     // criação da thread servidor
     thread server = thread(servidor, -1);
+    // inicia o tempo do escalonador
+    tempo_inicial_escalonador = clock();
     // criação das threads cliente
     thread clientes[NUM_THREADS];
     for(int i = 0; i < NUM_THREADS; i++)
         clientes[i] = thread(cliente, i);
 
-    for(int i = 0; i < NUM_THREADS; i++)
-        clientes[i].join();
+    first_come_first_served(clientes);
 
     return 0;
 }
