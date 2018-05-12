@@ -7,22 +7,20 @@ using namespace std;
 // variaveis de controle da região critica
 mutex mtx;
 condition_variable cond_var;
-volatile int atual = 0;
+volatile int atual = -1;
 volatile bool flag = false;
 volatile int cont_thread = 0;
 
 // variaveis compartilhadas
 volatile int requisicao = 0;
 volatile int resposta = 0;
+volatile bool pronto = false;
 
 // controle de tempo
 volatile clock_t tempo_inicial_escalonador;
 
-
 // ---------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------
-
 
 // função de somatorio
 int somatorio(int n){
@@ -49,11 +47,8 @@ void servidor(int id){
     }
 }
 
-
 // ---------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------
-
 
 // linha de execução da thread cliente
 void cliente(int id){
@@ -65,18 +60,16 @@ void cliente(int id){
     // trava a si mesma, esperando a vez
     unique_lock<mutex> trava(mtx);
     // thread fica esperando ser a sua vez
-    while(id != atual)
+    while(id != atual or !pronto)
         cond_var.wait(trava);
 
-    // thread vê que é sua vez e sai do while
-    atual++;
 
     // processo da thread
     requisicao = rand() % VALOR + 1;
 
     // testes
     cout << "Thread: ";
-    cout << id + 1 << ".";
+    cout << id << ".";
     cout << " Atual = ";
     cout << atual << endl;
     cout << "Valor requisitado: " << requisicao << endl;
@@ -101,19 +94,42 @@ void cliente(int id){
     cond_var.notify_all();
 }
 
-
-// ---------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------
 
-// escalonadores
-void first_come_first_served(thread threads[]){
+// escalonador loteria
+void lottery(thread threads[]){
     // variaveis de controle de tempo
     clock_t fim;
     double duracao, vazao;
-
+    // controle dos numeros sorteados
+    int sorteados[NUM_THREADS];
+    int index = 0;
     for(int i = 0; i < NUM_THREADS; i++)
-        threads[i].join();
+        sorteados[i] = -1;
+
+    int bilhete = -1;
+
+    for(int i = 0; i < NUM_THREADS; i++){
+        // while para evitar gerar um bilhete repetido
+        while(true){
+            bilhete = rand() % NUM_THREADS;
+            int *p = find(sorteados, sorteados + NUM_THREADS, bilhete);
+            if(p == sorteados + NUM_THREADS)
+                break;
+        }
+        // salvando o bilhete sorteado
+        sorteados[i] = bilhete;
+
+        // atendendo a thread sorteada
+        cout << "Bilhete sorteado: " << bilhete << endl;
+        pronto = true;
+        atual = bilhete;
+        cond_var.notify_all();
+        threads[bilhete].join();
+        pronto = false;
+    }
+
 
     // controle do tempo
     fim = clock();
@@ -122,24 +138,12 @@ void first_come_first_served(thread threads[]){
     printf("Vazão: %.2f threads/ms\n", vazao);
 }
 
-void shortest_job_first(thread threads[]){
-    // execução aqui();
-}
-
-void shortest_remaining_job_first(thread threads[], int quantum){
-    // execução aqui();
-}
-
-void round_robin(thread threads[], int quantum){
-    // execução aqui();
-}
-
 // ---------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------
-
 
 int main(){
+    srand(time(NULL));
+    cout << "Escalonador Loteria\n";
     // criação da thread servidor
     thread server = thread(servidor, -1);
     // inicia o tempo do escalonador
@@ -149,7 +153,6 @@ int main(){
     for(int i = 0; i < NUM_THREADS; i++)
         clientes[i] = thread(cliente, i);
 
-    first_come_first_served(clientes);
-
+    lottery(clientes);
     return 0;
 }
