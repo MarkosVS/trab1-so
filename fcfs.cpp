@@ -7,13 +7,14 @@ using namespace std;
 // variaveis de controle da região critica
 mutex mtx;
 condition_variable cond_var;
-volatile int atual = 0;
+volatile int atual = -1;
 volatile bool flag = false;
 volatile int cont_thread = 0;
 
 // variaveis compartilhadas
 volatile int requisicao = 0;
 volatile int resposta = 0;
+volatile bool pronto = false;
 
 // controle de tempo
 volatile clock_t tempo_inicial_escalonador;
@@ -59,20 +60,16 @@ void cliente(int id){
     // trava a si mesma, esperando a vez
     unique_lock<mutex> trava(mtx);
     // thread fica esperando ser a sua vez
-    while(id != atual)
+    while(id != atual or !pronto)
         cond_var.wait(trava);
 
     // thread vê que é sua vez e sai do while
-    atual++;
-    if(atual == NUM_THREADS)
-        atual = 0;
-
     // processo da thread
     requisicao = rand() % VALOR + 1;
 
     // testes
     cout << "Thread: ";
-    cout << id + 1 << ".";
+    cout << id << ".";
     cout << " Atual = ";
     cout << atual << endl;
     cout << "Valor requisitado: " << requisicao << endl;
@@ -92,9 +89,6 @@ void cliente(int id){
     // imprime o tempo de resposta / espera
     printf("Tempo de resposta: %.2fms\n", duracao);
     printf("Tempo de espera: %.2fms\n\n", espera);
-
-    // thread passa a vez
-    cond_var.notify_all();
 }
 
 // ---------------------------------------------------------------------------------------
@@ -106,7 +100,11 @@ void first_come_first_served(thread threads[]){
     clock_t fim;
     double duracao, vazao;
     for(int i = 0; i < NUM_THREADS; i++){
+        pronto = true;
+        atual++;
+        cond_var.notify_all();
         threads[i].join();
+        pronto = false;
     }
 
     // controle do tempo

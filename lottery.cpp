@@ -89,9 +89,6 @@ void cliente(int id){
     // imprime o tempo de resposta / espera
     printf("Tempo de resposta: %.2fms\n", duracao);
     printf("Tempo de espera: %.2fms\n\n", espera);
-
-    // thread passa a vez
-    cond_var.notify_all();
 }
 
 // ---------------------------------------------------------------------------------------
@@ -104,7 +101,6 @@ void lottery(thread threads[]){
     double duracao, vazao;
     // controle dos numeros sorteados
     int sorteados[NUM_THREADS];
-    int index = 0;
     for(int i = 0; i < NUM_THREADS; i++)
         sorteados[i] = -1;
 
